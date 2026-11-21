@@ -1,0 +1,1711 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Pac-Man Woordenschat (A2)</title>
+  <!-- Laad Tailwind CSS voor een strakke en responsieve lay-out -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Laad het Inter lettertype voor uitstekende leesbaarheid -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    /* Algemene typografie en achtergrond voor volledig scherm (100vw x 100vh) */
+    html, body {
+      width: 100vw;
+      height: 100vh;
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 55%, #0f172a 100%);
+      color: #f8fafc;
+    }
+
+    /* Arcade-knoppen met subtiele schaduw en veerkrachtige klikreactie */
+    .arcade-btn {
+      transition: transform 0.12s ease, box-shadow 0.12s ease, background-color 0.15s ease;
+      box-shadow: 0 3px 0 rgba(0, 0, 0, 0.35);
+    }
+    .arcade-btn:active {
+      transform: translateY(2px);
+      box-shadow: 0 1px 0 rgba(0, 0, 0, 0.35);
+    }
+
+    /* Canvas wordt via JavaScript exact geschaald naar de beschikbare ruimte */
+    #gameCanvas {
+      display: block;
+      touch-action: none;
+    }
+  </style>
+</head>
+<body class="antialiased selection:bg-yellow-300 selection:text-slate-900">
+  <div id="app" class="w-screen h-screen overflow-hidden flex flex-col px-2.5 sm:px-4 py-2 sm:py-3 gap-2">
+
+    <!-- Bovenste balk: Titel, score, levens en actieknoppen (inclusief Volledig scherm & Woordenlijst) -->
+    <header class="shrink-0 bg-slate-900/90 border border-slate-700/80 rounded-2xl px-3 sm:px-4 py-2 shadow-xl flex flex-wrap items-center justify-between gap-2">
+      <div class="flex items-center gap-2.5">
+        <span class="inline-flex items-center justify-center w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-yellow-400 text-slate-950 font-extrabold text-base sm:text-lg shadow">
+          P
+        </span>
+        <div>
+          <h1 class="text-base sm:text-xl font-extrabold tracking-tight text-white leading-tight">
+            Pac-Man Woordenschat <span class="text-amber-400">· A2</span>
+          </h1>
+          <p class="hidden md:block text-xs text-slate-300">
+            Eet de woordmunten, beantwoord de A2-vraag en let op de spoken!
+          </p>
+        </div>
+      </div>
+
+      <!-- Statistieken & knoppen -->
+      <div class="flex flex-wrap items-center gap-1.5 sm:gap-2">
+        <!-- Punten -->
+        <div class="bg-slate-800/90 border border-slate-700 rounded-xl px-2.5 sm:px-3 py-1 text-center min-w-[68px]">
+          <div class="text-[10px] uppercase tracking-wider text-slate-400 font-semibold">Punten</div>
+          <div id="scoreDisplay" class="text-sm sm:text-base font-extrabold text-amber-300 tabular-nums">0</div>
+        </div>
+
+        <!-- Woorden gehad -->
+        <div class="bg-slate-800/90 border border-slate-700 rounded-xl px-2.5 sm:px-3 py-1 text-center min-w-[76px]">
+          <div class="text-[10px] uppercase tracking-wider text-slate-400 font-semibold">Woorden</div>
+          <div id="progressDisplay" class="text-sm sm:text-base font-extrabold text-emerald-300 tabular-nums">0 / 12</div>
+        </div>
+
+        <!-- Levens -->
+        <div class="bg-slate-800/90 border border-slate-700 rounded-xl px-2.5 sm:px-3 py-1 text-center min-w-[78px]">
+          <div class="text-[10px] uppercase tracking-wider text-slate-400 font-semibold">Levens</div>
+          <div id="livesDisplay" class="text-sm sm:text-base font-extrabold text-rose-400 tracking-wide">♥♥♥</div>
+        </div>
+
+        <!-- Woordenlijst openen -->
+        <button
+          id="vocabListBtn"
+          type="button"
+          class="arcade-btn bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl px-2.5 sm:px-3 py-2 text-xs sm:text-sm font-bold flex items-center gap-1 cursor-pointer"
+        >
+          <span>📖</span>
+          <span>Woordenlijst</span>
+        </button>
+
+        <!-- Volledig scherm (Fullscreen API) -->
+        <button
+          id="fullscreenBtn"
+          type="button"
+          aria-label="Volledig scherm in- of uitschakelen"
+          class="arcade-btn bg-sky-600 hover:bg-sky-500 text-white rounded-xl px-2.5 sm:px-3 py-2 text-xs sm:text-sm font-bold flex items-center gap-1 cursor-pointer"
+        >
+          <span id="fullscreenIcon">⛶</span>
+          <span id="fullscreenLabel" class="hidden sm:inline">Volledig scherm</span>
+        </button>
+
+        <!-- Geluid aan/uit -->
+        <button
+          id="soundToggleBtn"
+          type="button"
+          aria-label="Geluid aan of uit zetten"
+          class="arcade-btn bg-slate-800 hover:bg-slate-700 text-slate-100 border border-slate-600 rounded-xl px-2.5 sm:px-3 py-2 text-xs sm:text-sm font-semibold flex items-center gap-1 cursor-pointer"
+        >
+          <span id="soundIcon">🔊</span>
+          <span id="soundLabel" class="hidden xl:inline">Geluid</span>
+        </button>
+
+        <!-- Pauze / Hervat -->
+        <button
+          id="pauseBtn"
+          type="button"
+          class="arcade-btn bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl px-2.5 sm:px-3 py-2 text-xs sm:text-sm font-semibold cursor-pointer"
+        >
+          Pauze
+        </button>
+
+        <!-- Opnieuw starten -->
+        <button
+          id="restartBtn"
+          type="button"
+          class="arcade-btn bg-amber-400 hover:bg-amber-300 text-slate-950 rounded-xl px-2.5 sm:px-3 py-2 text-xs sm:text-sm font-bold cursor-pointer"
+        >
+          Opnieuw
+        </button>
+      </div>
+    </header>
+
+    <!-- Compacte meldingen- en krachtbalk -->
+    <div id="statusBanner" class="hidden shrink-0 rounded-xl px-3 py-1.5 text-xs sm:text-sm font-medium border transition-all"></div>
+    <div id="powerBarWrap" class="hidden shrink-0 bg-slate-900 rounded-xl px-3 py-1 border border-sky-400/50 flex items-center justify-between text-xs sm:text-sm font-bold text-sky-300">
+      <span>⚡ Kracht actief! Je kunt blauwe spoken eten voor +150 punten!</span>
+      <span id="powerTimerText" class="tabular-nums">8s</span>
+    </div>
+
+    <!-- Hoofdinhoud: vult de volledige resterende viewport-hoogte zonder scrollen -->
+    <main class="flex-1 min-h-0 flex flex-col lg:flex-row gap-2.5 sm:gap-3 items-stretch overflow-hidden">
+
+      <!-- Speelveld kolom: neemt maximale ruimte in -->
+      <section id="boardSection" class="flex-1 min-h-0 min-w-0 bg-slate-950/95 border-2 border-indigo-500/50 rounded-2xl p-2 sm:p-3 shadow-2xl flex flex-col items-center justify-between relative overflow-hidden">
+
+        <!-- Doolhof container die exact gecentreerd en maximaal geschaald wordt -->
+        <div id="canvasHost" class="flex-1 min-h-0 w-full flex items-center justify-center relative overflow-hidden">
+          <div id="canvasFrame" class="relative rounded-xl overflow-hidden bg-slate-950 shadow-inner">
+            <canvas id="gameCanvas"></canvas>
+
+            <!-- Start- of Pauze-overlay binnen het doolhof -->
+            <div id="boardOverlay" class="absolute inset-0 bg-slate-950/88 backdrop-blur-xs flex flex-col items-center justify-center p-4 sm:p-6 text-center z-10">
+              <div id="overlayBadge" class="px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-amber-400/20 text-amber-300 border border-amber-400/40 mb-2">
+                Klaar om te spelen?
+              </div>
+              <h2 id="overlayTitle" class="text-xl sm:text-3xl font-extrabold text-white mb-2">
+                Oefen 12 A2-woorden!
+              </h2>
+              <p id="overlayText" class="text-xs sm:text-base text-slate-300 max-w-lg mb-4 leading-relaxed">
+                Loop met de pijltjestoetsen of <strong class="text-white">WASD</strong> (of veeg/tik) naar een woordmunt. Beantwoord de vraag en verdien punten!
+              </p>
+              <button
+                id="startPlayBtn"
+                type="button"
+                class="arcade-btn bg-amber-400 hover:bg-amber-300 text-slate-950 font-extrabold px-6 py-3 rounded-xl text-sm sm:text-base cursor-pointer"
+              >
+                Start het spel
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Compacte onderbalk onder het doolhof: legenda + touch-knoppen -->
+        <div class="shrink-0 w-full pt-1.5 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-300">
+          <div class="flex flex-wrap items-center gap-3">
+            <div class="flex items-center gap-1.5">
+              <span class="inline-block w-3 h-3 rounded-full bg-amber-400"></span>
+              <span>Woordmunt (vraag)</span>
+            </div>
+            <div class="flex items-center gap-1.5">
+              <span class="inline-block w-2.5 h-2.5 rounded-full bg-indigo-300"></span>
+              <span>Punt (+10)</span>
+            </div>
+            <div class="flex items-center gap-1.5">
+              <span class="inline-block w-3 h-3 rounded-full bg-sky-400"></span>
+              <span>Spook</span>
+            </div>
+          </div>
+
+          <!-- Compacte on-screen besturing (altijd handig op digibord/tablet, compact op desktop) -->
+          <div class="flex items-center gap-1.5 select-none">
+            <span class="hidden sm:inline text-[11px] text-slate-400 mr-1">Besturing:</span>
+            <button type="button" data-dir="LEFT" aria-label="Naar links" class="dpad-btn arcade-btn bg-slate-800 hover:bg-slate-700 active:bg-amber-400 active:text-slate-950 text-white font-bold w-9 h-8 sm:w-10 sm:h-8 rounded-lg border border-slate-600 text-sm flex items-center justify-center cursor-pointer">◀</button>
+            <button type="button" data-dir="UP" aria-label="Omhoog" class="dpad-btn arcade-btn bg-slate-800 hover:bg-slate-700 active:bg-amber-400 active:text-slate-950 text-white font-bold w-9 h-8 sm:w-10 sm:h-8 rounded-lg border border-slate-600 text-sm flex items-center justify-center cursor-pointer">▲</button>
+            <button type="button" data-dir="DOWN" aria-label="Omlaag" class="dpad-btn arcade-btn bg-slate-800 hover:bg-slate-700 active:bg-amber-400 active:text-slate-950 text-white font-bold w-9 h-8 sm:w-10 sm:h-8 rounded-lg border border-slate-600 text-sm flex items-center justify-center cursor-pointer">▼</button>
+            <button type="button" data-dir="RIGHT" aria-label="Naar rechts" class="dpad-btn arcade-btn bg-slate-800 hover:bg-slate-700 active:bg-amber-400 active:text-slate-950 text-white font-bold w-9 h-8 sm:w-10 sm:h-8 rounded-lg border border-slate-600 text-sm flex items-center justify-center cursor-pointer">▶</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Compacte zijbalk (desktop) / onderstrook (mobiel) voor de 12 woorden -->
+      <aside class="shrink-0 lg:w-72 xl:w-80 bg-slate-900/90 border border-slate-700/80 rounded-2xl p-2.5 sm:p-3.5 shadow-xl flex flex-col justify-between overflow-hidden">
+        <div class="flex items-center justify-between gap-2 mb-2">
+          <div>
+            <h2 class="text-sm sm:text-base font-extrabold text-white leading-tight">12 A2-woorden</h2>
+            <p class="hidden lg:block text-[11px] text-slate-400">
+              Groen = goed · Oranje = geoefend
+            </p>
+          </div>
+          <span id="masteredCountBadge" class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 tabular-nums">
+            0 goed
+          </span>
+        </div>
+
+        <!-- Overzicht van alle 12 woorden (past zonder scrollen in het scherm) -->
+        <ul id="wordTrackerList" class="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-1 gap-1.5 overflow-hidden"></ul>
+
+        <!-- Korte A2-tip onderin de zijbalk op grotere schermen -->
+        <div class="hidden lg:block mt-2.5 bg-indigo-950/60 border border-indigo-500/30 rounded-xl p-2.5 text-[11px] text-indigo-100 leading-snug">
+          <strong class="text-amber-300">Sneltoetsen:</strong> Gebruik <strong class="text-white">1, 2, 3</strong> bij een vraag en <strong class="text-white">Enter</strong> om door te gaan!
+        </div>
+      </aside>
+    </main>
+  </div>
+
+  <!-- Modale kaart voor A2-woordenschatvraag en feedback -->
+  <div
+    id="questionModal"
+    class="hidden fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-xs flex items-center justify-center p-4"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="modalTitle"
+  >
+    <div class="w-full max-w-xl bg-slate-900 border-2 border-amber-400/70 rounded-2xl p-5 sm:p-6 shadow-2xl">
+      <!-- Kop van de vraagkaart -->
+      <div class="flex items-center justify-between gap-2 mb-3">
+        <span id="modalBadge" class="px-3 py-1 rounded-full text-xs font-extrabold uppercase tracking-wider bg-amber-400/20 text-amber-300 border border-amber-400/40">
+          Woordmunt · Vraag
+        </span>
+        <span id="modalWordHint" class="text-xs font-semibold text-slate-400">
+          Doelwoord op munt
+        </span>
+      </div>
+
+      <h3 id="modalTitle" class="text-xl sm:text-2xl font-extrabold text-white mb-2">
+        Welk woord past in deze zin?
+      </h3>
+
+      <!-- Contextzin of omschrijving -->
+      <div class="bg-slate-800/90 border border-slate-700 rounded-xl p-4 mb-4">
+        <p id="modalPrompt" class="text-base sm:text-xl text-slate-100 font-medium leading-relaxed"></p>
+        <p id="modalClue" class="mt-2 text-xs sm:text-sm text-sky-300"></p>
+      </div>
+
+      <!-- Meerkeuzeopties (met sneltoetsen 1, 2, 3) -->
+      <div id="optionsContainer" class="flex flex-col gap-2.5 mb-4"></div>
+
+      <!-- Feedbackgedeelte (verschijnt na het kiezen van een antwoord) -->
+      <div id="feedbackBox" class="hidden rounded-xl p-4 border mb-4">
+        <div id="feedbackHeading" class="font-extrabold text-base sm:text-lg mb-1"></div>
+        <p id="feedbackMessage" class="text-sm leading-relaxed mb-1.5"></p>
+        <p id="feedbackExample" class="text-xs sm:text-sm italic opacity-95"></p>
+      </div>
+
+      <!-- Doorgaan-knop na feedback -->
+      <div class="flex justify-end">
+        <button
+          id="continueBtn"
+          type="button"
+          class="hidden arcade-btn bg-emerald-400 hover:bg-emerald-300 text-slate-950 font-extrabold px-5 py-2.5 rounded-xl text-sm sm:text-base cursor-pointer"
+        >
+          Verder spelen (Enter) ▶
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modale kaart voor de Woordenlijst (om alle 12 woorden op A2 te bekijken) -->
+  <div
+    id="vocabModal"
+    class="hidden fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-xs flex items-center justify-center p-4"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="vocabModalTitle"
+  >
+    <div class="w-full max-w-3xl max-h-[88vh] bg-slate-900 border-2 border-emerald-400/70 rounded-2xl p-5 sm:p-6 shadow-2xl flex flex-col">
+      <div class="flex items-center justify-between gap-3 mb-3 shrink-0">
+        <div>
+          <h2 id="vocabModalTitle" class="text-xl sm:text-2xl font-extrabold text-white">
+            Woordenlijst · Niveau A2 (12 woorden)
+          </h2>
+          <p class="text-xs sm:text-sm text-slate-300">
+            Bekijk de betekenis en een voorbeeldzin van elk woord.
+          </p>
+        </div>
+        <button
+          id="closeVocabBtn"
+          type="button"
+          class="arcade-btn bg-slate-800 hover:bg-slate-700 text-white border border-slate-600 rounded-xl px-3.5 py-2 text-sm font-bold cursor-pointer"
+        >
+          Sluiten ✕
+        </button>
+      </div>
+
+      <div id="vocabModalGrid" class="overflow-y-auto pr-1 grid grid-cols-1 sm:grid-cols-2 gap-3"></div>
+    </div>
+  </div>
+
+  <!-- Eindscherm-modal (Winst of Game Over) -->
+  <div
+    id="endModal"
+    class="hidden fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-xs flex items-center justify-center p-4"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="endTitle"
+  >
+    <div class="w-full max-w-xl bg-slate-900 border-2 border-emerald-400/70 rounded-2xl p-6 shadow-2xl text-center">
+      <div id="endEmoji" class="text-4xl mb-2">🎉</div>
+      <h2 id="endTitle" class="text-2xl sm:text-3xl font-extrabold text-white mb-2">
+        Goed gedaan!
+      </h2>
+      <p id="endSubtitle" class="text-sm sm:text-base text-slate-300 mb-5"></p>
+
+      <!-- Samenvatting score en woorden -->
+      <div class="grid grid-cols-2 gap-3 mb-5 text-left">
+        <div class="bg-slate-800/90 border border-slate-700 rounded-xl p-3.5">
+          <div class="text-xs text-slate-400 font-semibold uppercase">Eindscore</div>
+          <div id="endScore" class="text-2xl font-extrabold text-amber-300 tabular-nums">0</div>
+        </div>
+        <div class="bg-slate-800/90 border border-slate-700 rounded-xl p-3.5">
+          <div class="text-xs text-slate-400 font-semibold uppercase">Goed op A2</div>
+          <div id="endCorrectCount" class="text-2xl font-extrabold text-emerald-300 tabular-nums">0 / 12</div>
+        </div>
+      </div>
+
+      <!-- Overzicht van alle 12 woorden -->
+      <div id="endWordSummary" class="max-h-52 overflow-y-auto text-left bg-slate-950/70 border border-slate-800 rounded-xl p-3 mb-5 grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs"></div>
+
+      <button
+        id="playAgainBtn"
+        type="button"
+        class="arcade-btn bg-amber-400 hover:bg-amber-300 text-slate-950 font-extrabold px-6 py-3 rounded-xl text-base cursor-pointer"
+      >
+        Nog een keer spelen
+      </button>
+    </div>
+  </div>
+
+  <script>
+    /**
+     * Pac-Man Woordenschat (Niveau A2)
+     * Bevat alle 12 doelwoorden:
+     * feest, kaartjes, uitnodigen, sparen, ontvangen, bedanken,
+     * lieve, bijzonder, reden, verrassen, reserveren, liefs
+     */
+
+    // =========================================================================
+    // 1. WOORDENSCHATDATA OP A2-NIVEAU (12 DOELWOORDEN)
+    // =========================================================================
+    const VOCABULARY_ITEMS = [
+      {
+        word: "feest",
+        pos: "zelfstandig naamwoord",
+        shortHint: "verjaardag / gezellig samenzijn",
+        sentence: "Zaterdag geven wij een groot ______ omdat mijn zus dertig jaar wordt.",
+        clue: "Aanwijzing: Er is muziek, taart en veel bezoek.",
+        options: ["feest", "reden", "kaartjes"],
+        explanation: "Een 'feest' is een gezellige bijeenkomst, bijvoorbeeld voor een verjaardag of een speciale dag.",
+        example: "Voorbeeldzin: Op het feest van Sam hebben we veel gedanst."
+      },
+      {
+        word: "kaartjes",
+        pos: "zelfstandig naamwoord (meervoud)",
+        shortHint: "tickets / uitnodigingen op papier",
+        sentence: "Wij hebben alvast twee ______ voor de film van vanavond gekocht.",
+        clue: "Aanwijzing: Je hebt ze nodig om binnen te komen bij een film of concert.",
+        options: ["kaartjes", "sparen", "liefs"],
+        explanation: "'Kaartjes' zijn hier tickets of toegangsbewijzen, zoals voor een film, trein of concert.",
+        example: "Voorbeeldzin: Heb jij nog kaartjes voor het theater?"
+      },
+      {
+        word: "uitnodigen",
+        pos: "werkwoord",
+        shortHint: "iemand vragen om te komen",
+        sentence: "Ik wil mijn buren graag ______ om samen koffie te drinken.",
+        clue: "Aanwijzing: Je vraagt mensen of ze ergens bij willen zijn.",
+        options: ["uitnodigen", "ontvangen", "reserveren"],
+        explanation: "'Uitnodigen' betekent iemand vragen om ergens naartoe te komen, zoals een etentje of feest.",
+        example: "Voorbeeldzin: We nodigen al onze vrienden uit voor de barbecue."
+      },
+      {
+        word: "sparen",
+        pos: "werkwoord",
+        shortHint: "geld opzijzetten voor later",
+        sentence: "Elke maand ga ik een beetje geld ______ voor een nieuwe fiets.",
+        clue: "Aanwijzing: Je geeft het geld nu niet uit, maar bewaart het.",
+        options: ["sparen", "bedanken", "verrassen"],
+        explanation: "'Sparen' betekent geld opzijzetten zodat je later iets groters of mooiers kunt kopen.",
+        example: "Voorbeeldzin: Lotte spaart voor een vakantie naar Spanje."
+      },
+      {
+        word: "ontvangen",
+        pos: "werkwoord",
+        shortHint: "krijgen (bijv. een bericht of cadeau)",
+        sentence: "Gisteren heb ik een mooie brief van mijn oma ______.",
+        clue: "Aanwijzing: Het tegenovergestelde van versturen of geven.",
+        options: ["ontvangen", "reserveren", "uitnodigen"],
+        explanation: "'Ontvangen' is een iets formeler of duidelijk woord voor 'krijgen', bijvoorbeeld post, een bericht of gasten.",
+        example: "Voorbeeldzin: Heb jij mijn e-mail goed ontvangen?"
+      },
+      {
+        word: "bedanken",
+        pos: "werkwoord",
+        shortHint: "dankjewel zeggen",
+        sentence: "Ik wil je hartelijk ______ voor de hulp met verhuizen.",
+        clue: "Aanwijzing: Je laat merken dat je blij bent met hulp of een cadeau.",
+        options: ["bedanken", "sparen", "verrassen"],
+        explanation: "'Bedanken' betekent iemand dankjewel zeggen voor iets wat hij of zij heeft gedaan of gegeven.",
+        example: "Voorbeeldzin: Hij bedankte de dokter voor het goede advies."
+      },
+      {
+        word: "lieve",
+        pos: "bijvoeglijk naamwoord",
+        shortHint: "aardig, zacht en vriendelijk",
+        sentence: "Dankjewel voor je ______ berichtje, dat maakte mijn dag veel beter.",
+        clue: "Aanwijzing: Het beschrijft iemand of iets dat heel aardig en warm is.",
+        options: ["lieve", "bijzonder", "liefs"],
+        explanation: "'Lieve' gebruik je voor mensen of woorden die heel vriendelijk en warm zijn, zoals 'lieve oma'.",
+        example: "Voorbeeldzin: Wat heb jij toch een lieve hond!"
+      },
+      {
+        word: "bijzonder",
+        pos: "bijvoeglijk naamwoord",
+        shortHint: "speciaal / niet gewoon",
+        sentence: "Dit is een heel ______ cadeau, omdat je het zelf hebt gemaakt.",
+        clue: "Aanwijzing: Het is extra speciaal en gebeurt niet elke dag.",
+        options: ["bijzonder", "lieve", "reden"],
+        explanation: "Iets is 'bijzonder' als het speciaal is en opvalt tussen gewone dingen.",
+        example: "Voorbeeldzin: Onze reis naar de bergen was heel bijzonder."
+      },
+      {
+        word: "reden",
+        pos: "zelfstandig naamwoord",
+        shortHint: "waarom iets gebeurt",
+        sentence: "Wat is de ______ dat je vandaag een half uur te laat bent?",
+        clue: "Aanwijzing: Dit geeft antwoord op de vraag 'waarom?'.",
+        options: ["reden", "feest", "kaartjes"],
+        explanation: "Een 'reden' is de oorzaak of het waarom achter een keuze of gebeurtenis.",
+        example: "Voorbeeldzin: Er is geen reden om je zorgen te maken."
+      },
+      {
+        word: "verrassen",
+        pos: "werkwoord",
+        shortHint: "iets onverwachts doen waar iemand blij van wordt",
+        sentence: "We willen papa ______ met een ontbijt op bed op zijn verjaardag.",
+        clue: "Aanwijzing: Hij weet er nog niets van tot het moment zelf.",
+        options: ["verrassen", "ontvangen", "bedanken"],
+        explanation: "'Verrassen' betekent iemand onverwachts blij maken met iets leuks of nieuws.",
+        example: "Voorbeeldzin: Ze verraste haar vriendin met een bos bloemen."
+      },
+      {
+        word: "reserveren",
+        pos: "werkwoord",
+        shortHint: "vastleggen (bijv. een tafel of plek)",
+        sentence: "In het weekend is het druk, dus we moeten een tafel ______.",
+        clue: "Aanwijzing: Je belt of klikt vooraf om zeker te zijn van een plek.",
+        options: ["reserveren", "sparen", "uitnodigen"],
+        explanation: "'Reserveren' betekent vooraf een plek, tafel of kaartje vastleggen.",
+        example: "Voorbeeldzin: Kunnen we voor vier personen reserveren om 19.00 uur?"
+      },
+      {
+        word: "liefs",
+        pos: "afsluiting / groet",
+        shortHint: "vriendelijke groet aan het eind van een bericht",
+        sentence: "Ik zie je morgen op school. Veel ______, Tessa.",
+        clue: "Aanwijzing: Dit staat vaak onderaan een appje of kaartje aan een vriend.",
+        options: ["liefs", "lieve", "bijzonder"],
+        explanation: "'Liefs' is een warme, informele afsluiting onder een kaartje, brief of berichtje.",
+        example: "Voorbeeldzin: Fijne vakantie gewenst! Liefs, Bram."
+      }
+    ];
+
+    // =========================================================================
+    // 2. GELUIDSEFFECTEN MET WEB AUDIO API (GEEN EXTERNE BESTANDEN)
+    // =========================================================================
+    class SoundManager {
+      constructor() {
+        this.enabled = true;
+        this.ctx = null;
+      }
+
+      ensureContext() {
+        if (!this.enabled) return null;
+        if (!this.ctx) {
+          const AudioCtx = window.AudioContext || window.webkitAudioContext;
+          if (AudioCtx) {
+            this.ctx = new AudioCtx();
+          }
+        }
+        if (this.ctx && this.ctx.state === "suspended") {
+          this.ctx.resume().catch(() => {});
+        }
+        return this.ctx;
+      }
+
+      playTone(freq, duration = 0.12, type = "sine", gainVal = 0.08, delay = 0) {
+        try {
+          const ctx = this.ensureContext();
+          if (!ctx) return;
+
+          const startTime = ctx.currentTime + delay;
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+
+          osc.type = type;
+          osc.frequency.setValueAtTime(freq, startTime);
+
+          gain.gain.setValueAtTime(gainVal, startTime);
+          gain.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
+
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+
+          osc.start(startTime);
+          osc.stop(startTime + duration);
+        } catch (err) {
+          // Negeer audiofouten op apparaten zonder audio-ondersteuning
+        }
+      }
+
+      dot() {
+        this.playTone(520, 0.055, "triangle", 0.045);
+      }
+
+      token() {
+        this.playTone(660, 0.09, "sine", 0.08, 0);
+        this.playTone(880, 0.12, "sine", 0.08, 0.08);
+      }
+
+      correct() {
+        this.playTone(587.33, 0.1, "triangle", 0.09, 0);
+        this.playTone(783.99, 0.1, "triangle", 0.09, 0.09);
+        this.playTone(1046.5, 0.2, "triangle", 0.1, 0.18);
+      }
+
+      wrong() {
+        this.playTone(311.13, 0.14, "sawtooth", 0.06, 0);
+        this.playTone(261.63, 0.22, "sawtooth", 0.06, 0.13);
+      }
+
+      eatGhost() {
+        this.playTone(440, 0.08, "square", 0.07, 0);
+        this.playTone(659, 0.08, "square", 0.07, 0.07);
+        this.playTone(987, 0.14, "square", 0.07, 0.14);
+      }
+
+      loseLife() {
+        this.playTone(392, 0.15, "sawtooth", 0.08, 0);
+        this.playTone(311, 0.15, "sawtooth", 0.08, 0.14);
+        this.playTone(220, 0.28, "sawtooth", 0.08, 0.28);
+      }
+
+      win() {
+        const notes = [523.25, 659.25, 783.99, 1046.5];
+        notes.forEach((n, idx) => {
+          this.playTone(n, 0.16, "triangle", 0.09, idx * 0.12);
+        });
+      }
+    }
+
+    // =========================================================================
+    // 3. DOOLHOFLAY-OUT (21 KOLOMMEN x 17 RIJEN)
+    // Legenda:
+    // '#' = muur
+    // '.' = kleine punt (+10 punten)
+    // 'W' = woordmunt (12 stuks op het bord)
+    // ' ' = open gangpad / spookhuis
+    // =========================================================================
+    const RAW_MAZE = [
+      "#####################",
+      "#W...#.....#.....#..W#",
+      "#.###.#.###.#.###.###",
+      "#.....W.....W.......#",
+      "#.###.#.#####.#.###.#",
+      "#W....#...#...#....W#",
+      "#####.###.#.###.#####",
+      "#...#.....W.....#...#",
+      "#.###.##.###.##.###.#",
+      "#W....#..   ..#....W#",
+      "#.###.#..   ..#.#.###",
+      "#...#.....W.....#...#",
+      "#####.###.#.###.#####",
+      "#W....#...#...#....W#",
+      "#.###.#.#####.#.###.#",
+      "#W...W.....W.....W..W#",
+      "#####################"
+    ];
+
+    const ROWS = RAW_MAZE.length;
+    const COLS = RAW_MAZE[0].length;
+
+    const DIRS = {
+      UP: { x: 0, y: -1 },
+      DOWN: { x: 0, y: 1 },
+      LEFT: { x: -1, y: 0 },
+      RIGHT: { x: 1, y: 0 }
+    };
+
+    const OPPOSITE_DIR = {
+      UP: "DOWN",
+      DOWN: "UP",
+      LEFT: "RIGHT",
+      RIGHT: "LEFT"
+    };
+
+    // =========================================================================
+    // 4. SPELSTATUS EN DOM-REFERENTIES
+    // =========================================================================
+    const sound = new SoundManager();
+
+    const canvas = document.getElementById("gameCanvas");
+    const ctx = canvas.getContext("2d");
+
+    const scoreDisplay = document.getElementById("scoreDisplay");
+    const progressDisplay = document.getElementById("progressDisplay");
+    const livesDisplay = document.getElementById("livesDisplay");
+    const masteredCountBadge = document.getElementById("masteredCountBadge");
+    const wordTrackerList = document.getElementById("wordTrackerList");
+    const statusBanner = document.getElementById("statusBanner");
+
+    const powerBarWrap = document.getElementById("powerBarWrap");
+    const powerTimerText = document.getElementById("powerTimerText");
+
+    const boardOverlay = document.getElementById("boardOverlay");
+    const overlayBadge = document.getElementById("overlayBadge");
+    const overlayTitle = document.getElementById("overlayTitle");
+    const overlayText = document.getElementById("overlayText");
+    const startPlayBtn = document.getElementById("startPlayBtn");
+
+    const pauseBtn = document.getElementById("pauseBtn");
+    const restartBtn = document.getElementById("restartBtn");
+    const soundToggleBtn = document.getElementById("soundToggleBtn");
+    const soundIcon = document.getElementById("soundIcon");
+    const soundLabel = document.getElementById("soundLabel");
+
+    const canvasHost = document.getElementById("canvasHost");
+    const canvasFrame = document.getElementById("canvasFrame");
+    const fullscreenBtn = document.getElementById("fullscreenBtn");
+    const fullscreenIcon = document.getElementById("fullscreenIcon");
+    const fullscreenLabel = document.getElementById("fullscreenLabel");
+    const vocabListBtn = document.getElementById("vocabListBtn");
+    const vocabModal = document.getElementById("vocabModal");
+    const vocabModalGrid = document.getElementById("vocabModalGrid");
+    const closeVocabBtn = document.getElementById("closeVocabBtn");
+
+    const questionModal = document.getElementById("questionModal");
+    const modalBadge = document.getElementById("modalBadge");
+    const modalWordHint = document.getElementById("modalWordHint");
+    const modalTitle = document.getElementById("modalTitle");
+    const modalPrompt = document.getElementById("modalPrompt");
+    const modalClue = document.getElementById("modalClue");
+    const optionsContainer = document.getElementById("optionsContainer");
+    const feedbackBox = document.getElementById("feedbackBox");
+    const feedbackHeading = document.getElementById("feedbackHeading");
+    const feedbackMessage = document.getElementById("feedbackMessage");
+    const feedbackExample = document.getElementById("feedbackExample");
+    const continueBtn = document.getElementById("continueBtn");
+
+    const endModal = document.getElementById("endModal");
+    const endEmoji = document.getElementById("endEmoji");
+    const endTitle = document.getElementById("endTitle");
+    const endSubtitle = document.getElementById("endSubtitle");
+    const endScore = document.getElementById("endScore");
+    const endCorrectCount = document.getElementById("endCorrectCount");
+    const endWordSummary = document.getElementById("endWordSummary");
+    const playAgainBtn = document.getElementById("playAgainBtn");
+
+    // Spelvariabelen
+    let grid = [];
+    let wordTokens = []; // { row, col, item, collected }
+    let wordStatus = {}; // word -> 'unseen' | 'correct' | 'wrong'
+    let score = 0;
+    let lives = 3;
+    let gameState = "START"; // 'START' | 'PLAYING' | 'PAUSED' | 'QUESTION' | 'ENDED'
+    let powerTimer = 0; // seconden over voor krachtmodus
+    let invulnTimer = 0; // korte onkwetsbaarheid na geraakt worden
+    let animTime = 0;
+    let lastFrameTime = null;
+    let activeQuestionToken = null;
+    let questionAnswered = false;
+    let stateBeforeVocabModal = null;
+
+    const pacmanStart = { col: 10, row: 11 };
+    const pacman = {
+      col: pacmanStart.col,
+      row: pacmanStart.row,
+      x: pacmanStart.col,
+      y: pacmanStart.row,
+      dir: "LEFT",
+      nextDir: "LEFT",
+      speed: 6.2, // tegels per seconde
+      mouthAngle: 0.22
+    };
+
+    const ghostConfigs = [
+      { name: "Roos", color: "#fb7185", col: 9, row: 9, dir: "LEFT", speed: 4.1 },
+      { name: "Bram", color: "#38bdf8", col: 10, row: 9, dir: "UP", speed: 3.9 },
+      { name: "Noor", color: "#c084fc", col: 11, row: 9, dir: "RIGHT", speed: 4.0 }
+    ];
+
+    let ghosts = [];
+
+    // =========================================================================
+    // 5. HULPFUNCTIES VOOR DOOLHOF, SHUFFLE EN MELDINGEN
+    // =========================================================================
+    function shuffleArray(arr) {
+      const copy = [...arr];
+      for (let i = copy.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [copy[i], copy[j]] = [copy[j], copy[i]];
+      }
+      return copy;
+    }
+
+    function showBanner(message, type = "info") {
+      statusBanner.classList.remove(
+        "hidden",
+        "bg-sky-950/90",
+        "text-sky-200",
+        "border-sky-500/40",
+        "bg-emerald-950/90",
+        "text-emerald-200",
+        "border-emerald-500/40",
+        "bg-amber-950/90",
+        "text-amber-200",
+        "border-amber-500/40"
+      );
+
+      if (type === "success") {
+        statusBanner.classList.add("bg-emerald-950/90", "text-emerald-200", "border-emerald-500/40");
+      } else if (type === "warning") {
+        statusBanner.classList.add("bg-amber-950/90", "text-amber-200", "border-amber-500/40");
+      } else {
+        statusBanner.classList.add("bg-sky-950/90", "text-sky-200", "border-sky-500/40");
+      }
+
+      statusBanner.textContent = message;
+    }
+
+    function hideBanner() {
+      statusBanner.classList.add("hidden");
+    }
+
+    function isWall(col, row) {
+      if (row < 0 || row >= ROWS || col < 0 || col >= COLS) return true;
+      return grid[row][col] === "#";
+    }
+
+    function isCenterAligned(entity, threshold = 0.14) {
+      return Math.abs(entity.x - entity.col) < threshold && Math.abs(entity.y - entity.row) < threshold;
+    }
+
+    function canMoveFromTile(col, row, dirName) {
+      const d = DIRS[dirName];
+      if (!d) return false;
+      const nextCol = col + d.x;
+      const nextRow = row + d.y;
+      return !isWall(nextCol, nextRow);
+    }
+
+    function getAvailableDirs(col, row, allowReverse = true, currentDir = null) {
+      const dirs = ["UP", "DOWN", "LEFT", "RIGHT"].filter((dName) => canMoveFromTile(col, row, dName));
+      if (!allowReverse && currentDir && dirs.length > 1) {
+        const opp = OPPOSITE_DIR[currentDir];
+        const filtered = dirs.filter((dName) => dName !== opp);
+        if (filtered.length > 0) return filtered;
+      }
+      return dirs;
+    }
+
+    // =========================================================================
+    // 6. INITIALISATIE & RESET VAN HET SPEL
+    // =========================================================================
+    function initGame(autoStart = false) {
+      score = 0;
+      lives = 3;
+      powerTimer = 0;
+      invulnTimer = 0;
+      activeQuestionToken = null;
+      questionAnswered = false;
+
+      // Zet woordstatussen terug op 'unseen'
+      wordStatus = {};
+      VOCABULARY_ITEMS.forEach((item) => {
+        wordStatus[item.word] = "unseen";
+      });
+
+      // Kopieer het doolhof en verzamel alle 'W'-posities
+      grid = RAW_MAZE.map((rowStr) => rowStr.split(""));
+      const tokenCoords = [];
+      for (let r = 0; r < ROWS; r++) {
+        for (let c = 0; c < COLS; c++) {
+          if (grid[r][c] === "W") {
+            tokenCoords.push({ row: r, col: c });
+          }
+        }
+      }
+
+      // Koppel de 12 doelwoorden in willekeurige volgorde aan de 12 woordmunten
+      const shuffledItems = shuffleArray(VOCABULARY_ITEMS);
+      wordTokens = tokenCoords.map((coord, idx) => ({
+        row: coord.row,
+        col: coord.col,
+        item: shuffledItems[idx] || VOCABULARY_ITEMS[idx % VOCABULARY_ITEMS.length],
+        collected: false
+      }));
+
+      resetPositions();
+      updateHUD();
+      renderWordTracker();
+      questionModal.classList.add("hidden");
+      endModal.classList.add("hidden");
+      hideBanner();
+
+      resizeCanvas();
+
+      if (autoStart) {
+        boardOverlay.classList.add("hidden");
+        gameState = "PLAYING";
+        pauseBtn.textContent = "Pauze";
+        showBanner("Veel succes! Zoek de woordmunten en beantwoord de A2-vragen.", "info");
+      } else {
+        gameState = "START";
+        pauseBtn.textContent = "Pauze";
+        overlayBadge.textContent = "Klaar om te spelen?";
+        overlayTitle.textContent = "Oefen 12 A2-woorden!";
+        overlayText.textContent =
+          "Loop met de pijltjestoetsen of WASD (of met de knoppen hieronder) naar een woordmunt. Beantwoord de vraag en verdien punten!";
+        startPlayBtn.textContent = "Start het spel";
+        boardOverlay.classList.remove("hidden");
+      }
+    }
+
+    function resetPositions() {
+      pacman.col = pacmanStart.col;
+      pacman.row = pacmanStart.row;
+      pacman.x = pacmanStart.col;
+      pacman.y = pacmanStart.row;
+      pacman.dir = "LEFT";
+      pacman.nextDir = "LEFT";
+
+      ghosts = ghostConfigs.map((cfg) => ({
+        name: cfg.name,
+        color: cfg.color,
+        startCol: cfg.col,
+        startRow: cfg.row,
+        col: cfg.col,
+        row: cfg.row,
+        x: cfg.col,
+        y: cfg.row,
+        dir: cfg.dir,
+        speed: cfg.speed,
+        frightened: false,
+        eatenCooldown: 0
+      }));
+    }
+
+    // =========================================================================
+    // 7. HUD & WOORDENLIJST WEERGEVEN
+    // =========================================================================
+    function updateHUD() {
+      scoreDisplay.textContent = String(score);
+
+      const collectedCount = wordTokens.filter((t) => t.collected).length;
+      progressDisplay.textContent = `${collectedCount} / ${VOCABULARY_ITEMS.length}`;
+
+      const safeLives = Math.max(0, lives);
+      livesDisplay.textContent = "♥".repeat(safeLives) + "♡".repeat(Math.max(0, 3 - safeLives));
+
+      const correctCount = Object.values(wordStatus).filter((st) => st === "correct").length;
+      masteredCountBadge.textContent = `${correctCount} goed`;
+
+      if (powerTimer > 0) {
+        powerBarWrap.classList.remove("hidden");
+        powerTimerText.textContent = `${Math.ceil(powerTimer)}s`;
+      } else {
+        powerBarWrap.classList.add("hidden");
+      }
+
+      // Herbereken canvasgrootte wanneer status- of krachtbalk verschijnt/verdwijnt
+      resizeCanvas();
+    }
+
+    function renderWordTracker() {
+      wordTrackerList.innerHTML = "";
+      VOCABULARY_ITEMS.forEach((item) => {
+        const status = wordStatus[item.word] || "unseen";
+        const li = document.createElement("li");
+
+        let cardClasses = "rounded-lg px-2.5 py-1.5 border flex items-center justify-between gap-1.5 transition-colors ";
+        let badgeText = "·";
+        let badgeClasses = "bg-slate-700/80 text-slate-300";
+
+        if (status === "correct") {
+          cardClasses += "bg-emerald-950/65 border-emerald-500/50 text-emerald-100";
+          badgeText = "✓ Goed";
+          badgeClasses = "bg-emerald-500/25 text-emerald-300 border border-emerald-400/40";
+        } else if (status === "wrong") {
+          cardClasses += "bg-amber-950/55 border-amber-500/50 text-amber-100";
+          badgeText = "Geoefend";
+          badgeClasses = "bg-amber-500/25 text-amber-300 border border-amber-400/40";
+        } else {
+          cardClasses += "bg-slate-800/75 border-slate-700/80 text-slate-200";
+        }
+
+        li.className = cardClasses;
+        li.innerHTML = `
+          <div class="min-w-0">
+            <div class="font-bold text-xs sm:text-sm truncate">${item.word}</div>
+          </div>
+          <span class="shrink-0 text-[10px] sm:text-[11px] font-bold px-1.5 py-0.5 rounded-full ${badgeClasses}">
+            ${badgeText}
+          </span>
+        `;
+        wordTrackerList.appendChild(li);
+      });
+    }
+
+    // =========================================================================
+    // 8. RESPONSIVE CANVAS SCHALING & TEKENEN (VOLLEDIGE BESCHIKBARE RUIMTE)
+    // =========================================================================
+    function resizeCanvas() {
+      if (!canvasHost || !canvasFrame) return;
+      const hostRect = canvasHost.getBoundingClientRect();
+      const availW = Math.max(240, hostRect.width);
+      const availH = Math.max(180, hostRect.height);
+
+      // Bereken de maximale celgrootte die zowel in breedte als hoogte past
+      const cellSize = Math.floor(Math.min(availW / COLS, availH / ROWS));
+      const targetWidth = Math.max(240, cellSize * COLS);
+      const targetHeight = Math.max(180, cellSize * ROWS);
+
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+
+      canvasFrame.style.width = `${targetWidth}px`;
+      canvasFrame.style.height = `${targetHeight}px`;
+      canvas.style.width = `${targetWidth}px`;
+      canvas.style.height = `${targetHeight}px`;
+
+      canvas.width = Math.round(targetWidth * dpr);
+      canvas.height = Math.round(targetHeight * dpr);
+
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      drawGame();
+    }
+
+    function drawGame() {
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const width = canvas.width / dpr;
+      const height = canvas.height / dpr;
+      const cell = width / COLS;
+
+      // Achtergrond
+      ctx.fillStyle = "#040711";
+      ctx.fillRect(0, 0, width, height);
+
+      // 1. Muren tekenen
+      for (let r = 0; r < ROWS; r++) {
+        for (let c = 0; c < COLS; c++) {
+          if (grid[r][c] === "#") {
+            const pad = Math.max(1.5, cell * 0.08);
+            ctx.fillStyle = "#1d4ed8";
+            ctx.beginPath();
+            ctx.roundRect(c * cell + pad, r * cell + pad, cell - pad * 2, cell - pad * 2, Math.max(3, cell * 0.16));
+            ctx.fill();
+
+            ctx.strokeStyle = "#60a5fa";
+            ctx.lineWidth = Math.max(1, cell * 0.04);
+            ctx.stroke();
+          } else if (grid[r][c] === ".") {
+            // Kleine punt
+            ctx.fillStyle = "#c7d2fe";
+            ctx.beginPath();
+            ctx.arc(c * cell + cell / 2, r * cell + cell / 2, Math.max(2, cell * 0.09), 0, Math.PI * 2);
+            ctx.fill();
+          }
+        }
+      }
+
+      // 2. Woordmunten tekenen (zichtbaar woord/label op of bij de munt)
+      wordTokens.forEach((token) => {
+        if (token.collected) return;
+        const cx = token.col * cell + cell / 2;
+        const cy = token.row * cell + cell / 2;
+        const pulseOffset = Math.sin(animTime * 4 + token.col + token.row) * (cell * 0.04);
+        const radius = Math.max(6, cell * 0.26) + pulseOffset;
+
+        // Gouden/amber munt
+        ctx.fillStyle = "#fbbf24";
+        ctx.beginPath();
+        ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.strokeStyle = "#fef08a";
+        ctx.lineWidth = Math.max(1.2, cell * 0.045);
+        ctx.stroke();
+
+        // Klein labeltje met het woord boven de munt zodat leerlingen het doelwoord zien
+        const fontSize = Math.max(8, Math.min(12, Math.round(cell * 0.28)));
+        ctx.font = `700 ${fontSize}px Inter, sans-serif`;
+        ctx.textAlign = "center";
+        ctx.textBaseline = "bottom";
+
+        const label = token.item.word;
+        const textWidth = ctx.measureText(label).width;
+        const boxW = textWidth + 8;
+        const boxH = fontSize + 4;
+        const boxX = Math.max(2, Math.min(width - boxW - 2, cx - boxW / 2));
+        const boxY = Math.max(2, cy - radius - boxH - 2);
+
+        ctx.fillStyle = "rgba(15, 23, 42, 0.88)";
+        ctx.beginPath();
+        ctx.roundRect(boxX, boxY, boxW, boxH, 4);
+        ctx.fill();
+
+        ctx.fillStyle = "#fde68a";
+        ctx.fillText(label, boxX + boxW / 2, boxY + boxH - 2);
+      });
+
+      // 3. Pac-Man tekenen
+      drawPacman(cell);
+
+      // 4. Spoken tekenen
+      ghosts.forEach((g) => drawGhost(g, cell));
+    }
+
+    function drawPacman(cell) {
+      // Knipperen tijdens korte onkwetsbaarheid
+      if (invulnTimer > 0 && Math.floor(animTime * 16) % 2 === 0) {
+        return;
+      }
+
+      const px = pacman.x * cell + cell / 2;
+      const py = pacman.y * cell + cell / 2;
+      const radius = cell * 0.4;
+
+      let baseAngle = 0;
+      if (pacman.dir === "RIGHT") baseAngle = 0;
+      else if (pacman.dir === "DOWN") baseAngle = Math.PI / 2;
+      else if (pacman.dir === "LEFT") baseAngle = Math.PI;
+      else if (pacman.dir === "UP") baseAngle = -Math.PI / 2;
+
+      const mouth = pacman.mouthAngle;
+
+      ctx.fillStyle = powerTimer > 0 ? "#fde047" : "#facc15";
+      ctx.beginPath();
+      ctx.moveTo(px, py);
+      ctx.arc(px, py, radius, baseAngle + mouth, baseAngle + Math.PI * 2 - mouth);
+      ctx.closePath();
+      ctx.fill();
+
+      // Oogje van Pac-Man
+      const eyeDist = radius * 0.45;
+      const eyeAngle = baseAngle - Math.PI / 3;
+      const ex = px + Math.cos(eyeAngle) * eyeDist;
+      const ey = py + Math.sin(eyeAngle) * eyeDist;
+      ctx.fillStyle = "#0f172a";
+      ctx.beginPath();
+      ctx.arc(ex, ey, Math.max(1.5, cell * 0.055), 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    function drawGhost(g, cell) {
+      const gx = g.x * cell + cell / 2;
+      const gy = g.y * cell + cell / 2;
+      const r = cell * 0.39;
+
+      const isFright = powerTimer > 0 && g.eatenCooldown <= 0;
+      const blinkWarning = isFright && powerTimer < 2.5 && Math.floor(animTime * 10) % 2 === 0;
+
+      ctx.fillStyle = isFright ? (blinkWarning ? "#f8fafc" : "#38bdf8") : g.color;
+
+      // Bovenkant van het spook + golvende onderkant
+      ctx.beginPath();
+      ctx.arc(gx, gy - r * 0.1, r, Math.PI, 0, false);
+      ctx.lineTo(gx + r, gy + r * 0.85);
+
+      const waves = 3;
+      const waveW = (r * 2) / waves;
+      for (let i = waves - 1; i >= 0; i--) {
+        const wx = gx - r + i * waveW;
+        ctx.lineTo(wx + waveW * 0.5, gy + r * 0.55);
+        ctx.lineTo(wx, gy + r * 0.85);
+      }
+      ctx.closePath();
+      ctx.fill();
+
+      // Ogen
+      ctx.fillStyle = "#ffffff";
+      ctx.beginPath();
+      ctx.arc(gx - r * 0.33, gy - r * 0.15, r * 0.24, 0, Math.PI * 2);
+      ctx.arc(gx + r * 0.33, gy - r * 0.15, r * 0.24, 0, Math.PI * 2);
+      ctx.fill();
+
+      const d = DIRS[g.dir] || { x: 0, y: 0 };
+      ctx.fillStyle = isFright ? "#0f172a" : "#1e293b";
+      ctx.beginPath();
+      ctx.arc(gx - r * 0.33 + d.x * r * 0.1, gy - r * 0.15 + d.y * r * 0.1, r * 0.12, 0, Math.PI * 2);
+      ctx.arc(gx + r * 0.33 + d.x * r * 0.1, gy - r * 0.15 + d.y * r * 0.1, r * 0.12, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // =========================================================================
+    // 9. BEWEGINGSLOGICA VAN PAC-MAN EN SPOKEN
+    // =========================================================================
+    function setDesiredDirection(newDir) {
+      if (!DIRS[newDir]) return;
+      pacman.nextDir = newDir;
+
+      // Als Pac-Man stilstaat of precies tegenovergesteld wil keren, reageer direct
+      if (newDir === OPPOSITE_DIR[pacman.dir] && canMoveFromTile(pacman.col, pacman.row, newDir)) {
+        pacman.dir = newDir;
+      }
+    }
+
+    function updatePacman(dt) {
+      // Animatie van de mond
+      pacman.mouthAngle = 0.06 + Math.abs(Math.sin(animTime * 11)) * 0.24;
+
+      if (isCenterAligned(pacman, pacman.speed * dt + 0.03)) {
+        // Snap netjes op de tegel als we dichtbij zijn
+        if (Math.abs(pacman.x - pacman.col) < 0.08 && Math.abs(pacman.y - pacman.row) < 0.08) {
+          pacman.x = pacman.col;
+          pacman.y = pacman.row;
+        }
+
+        // Probeer eerst de gewenste richting
+        if (canMoveFromTile(pacman.col, pacman.row, pacman.nextDir)) {
+          pacman.dir = pacman.nextDir;
+        }
+
+        // Als huidige richting geblokkeerd is, stop op het midden van de tegel
+        if (!canMoveFromTile(pacman.col, pacman.row, pacman.dir)) {
+          pacman.x = pacman.col;
+          pacman.y = pacman.row;
+          return;
+        }
+      }
+
+      const d = DIRS[pacman.dir];
+      pacman.x += d.x * pacman.speed * dt;
+      pacman.y += d.y * pacman.speed * dt;
+
+      // Nieuwe grid-coördinaat bepalen
+      const newCol = Math.round(pacman.x);
+      const newRow = Math.round(pacman.y);
+      if (newCol !== pacman.col || newRow !== pacman.row) {
+        if (!isWall(newCol, newRow)) {
+          pacman.col = newCol;
+          pacman.row = newRow;
+          handleTileInteraction(pacman.col, pacman.row);
+        }
+      }
+    }
+
+    function handleTileInteraction(col, row) {
+      // 1. Kleine punt eten
+      if (grid[row][col] === ".") {
+        grid[row][col] = " ";
+        score += 10;
+        sound.dot();
+        updateHUD();
+      }
+
+      // 2. Woordmunt eten -> opent A2-vraag!
+      const token = wordTokens.find((t) => !t.collected && t.col === col && t.row === row);
+      if (token) {
+        token.collected = true;
+        grid[row][col] = " ";
+        sound.token();
+        updateHUD();
+        openQuestionModal(token);
+      }
+    }
+
+    function updateGhosts(dt) {
+      ghosts.forEach((g) => {
+        if (g.eatenCooldown > 0) {
+          g.eatenCooldown = Math.max(0, g.eatenCooldown - dt);
+        }
+
+        const isFright = powerTimer > 0 && g.eatenCooldown <= 0;
+        const currentSpeed = isFright ? g.speed * 0.72 : g.speed;
+
+        if (isCenterAligned(g, currentSpeed * dt + 0.03)) {
+          g.x = g.col;
+          g.y = g.row;
+
+          const choices = getAvailableDirs(g.col, g.row, false, g.dir);
+          if (choices.length > 0) {
+            if (isFright) {
+              // Weg van Pac-Man bij krachtmodus
+              choices.sort((a, b) => {
+                const da = Math.hypot(g.col + DIRS[a].x - pacman.col, g.row + DIRS[a].y - pacman.row);
+                const db = Math.hypot(g.col + DIRS[b].x - pacman.col, g.row + DIRS[b].y - pacman.row);
+                return db - da;
+              });
+              g.dir = Math.random() < 0.75 ? choices[0] : choices[Math.floor(Math.random() * choices.length)];
+            } else {
+              // Mix van richting Pac-Man en speelse willekeur zodat paden gevarieerd blijven
+              choices.sort((a, b) => {
+                const da = Math.hypot(g.col + DIRS[a].x - pacman.col, g.row + DIRS[a].y - pacman.row);
+                const db = Math.hypot(g.col + DIRS[b].x - pacman.col, g.row + DIRS[b].y - pacman.row);
+                return da - db;
+              });
+              g.dir = Math.random() < 0.65 ? choices[0] : choices[Math.floor(Math.random() * choices.length)];
+            }
+          } else if (canMoveFromTile(g.col, g.row, OPPOSITE_DIR[g.dir])) {
+            g.dir = OPPOSITE_DIR[g.dir];
+          }
+        }
+
+        const d = DIRS[g.dir];
+        if (canMoveFromTile(g.col, g.row, g.dir) || !isCenterAligned(g, 0.02)) {
+          g.x += d.x * currentSpeed * dt;
+          g.y += d.y * currentSpeed * dt;
+        }
+
+        const nextCol = Math.round(g.x);
+        const nextRow = Math.round(g.y);
+        if (!isWall(nextCol, nextRow)) {
+          g.col = nextCol;
+          g.row = nextRow;
+        }
+
+        // Botsing controleren met Pac-Man
+        const distToPacman = Math.hypot(g.x - pacman.x, g.y - pacman.y);
+        if (distToPacman < 0.55 && invulnTimer <= 0) {
+          if (powerTimer > 0 && g.eatenCooldown <= 0) {
+            // Spook opeten voor bonuspunten!
+            score += 150;
+            g.col = g.startCol;
+            g.row = g.startRow;
+            g.x = g.startCol;
+            g.y = g.startRow;
+            g.eatenCooldown = 4;
+            sound.eatGhost();
+            updateHUD();
+            showBanner(`Je hebt ${g.name} gepakt! +150 bonuspunten!`, "success");
+          } else {
+            // Leven verliezen
+            handlePlayerHit();
+          }
+        }
+      });
+    }
+
+    function handlePlayerHit() {
+      lives -= 1;
+      sound.loseLife();
+      updateHUD();
+
+      if (lives <= 0) {
+        finishGame(false);
+        return;
+      }
+
+      invulnTimer = 2.0;
+      powerTimer = 0;
+      resetPositions();
+      showBanner(`Ai, een spook raakte je! Nog ${lives} ${lives === 1 ? "leven" : "levens"} over.`, "warning");
+    }
+
+    // =========================================================================
+    // 10. A2-WOORDENSCHATVRAAG MODAL & FEEDBACK
+    // =========================================================================
+    function openQuestionModal(token) {
+      gameState = "QUESTION";
+      activeQuestionToken = token;
+      questionAnswered = false;
+
+      const item = token.item;
+      modalBadge.textContent = `Woordmunt · ${item.pos}`;
+      modalWordHint.textContent = `Doelwoord: ${item.word}`;
+      modalTitle.textContent = "Welk woord past op de lege plek?";
+      modalPrompt.textContent = item.sentence;
+      modalClue.textContent = item.clue;
+
+      feedbackBox.classList.add("hidden");
+      continueBtn.classList.add("hidden");
+      optionsContainer.innerHTML = "";
+
+      const shuffledOptions = shuffleArray(item.options);
+      shuffledOptions.forEach((opt, idx) => {
+        const keyNum = idx + 1;
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.dataset.optionWord = opt;
+        btn.className =
+          "arcade-btn w-full text-left px-4 py-3 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-600 text-white font-bold text-base sm:text-lg flex items-center justify-between cursor-pointer";
+        btn.innerHTML = `<span class="flex items-center gap-2.5"><span class="inline-flex items-center justify-center w-6 h-6 rounded-md bg-slate-700 text-amber-300 text-xs font-extrabold">${keyNum}</span><span>${opt}</span></span><span class="text-xs text-slate-400">Toets ${keyNum}</span>`;
+        btn.addEventListener("click", () => handleAnswerSelection(opt, btn));
+        optionsContainer.appendChild(btn);
+      });
+
+      questionModal.classList.remove("hidden");
+    }
+
+    function handleAnswerSelection(chosenWord, clickedBtn) {
+      if (questionAnswered || !activeQuestionToken) return;
+      questionAnswered = true;
+
+      const item = activeQuestionToken.item;
+      const isCorrect = chosenWord === item.word;
+
+      // Vergrendel alle optieknoppen en markeer juiste/gekozen antwoord
+      const allBtns = optionsContainer.querySelectorAll("button");
+      allBtns.forEach((b) => {
+        b.disabled = true;
+        b.classList.remove("hover:bg-slate-700", "cursor-pointer");
+        if (b.dataset.optionWord === item.word) {
+          b.classList.remove("bg-slate-800", "border-slate-600");
+          b.classList.add("bg-emerald-900/80", "border-emerald-400", "text-emerald-100");
+        }
+      });
+
+      feedbackBox.classList.remove(
+        "hidden",
+        "bg-emerald-950/80",
+        "border-emerald-500/60",
+        "text-emerald-100",
+        "bg-amber-950/80",
+        "border-amber-500/60",
+        "text-amber-100"
+      );
+
+      if (isCorrect) {
+        score += 100;
+        powerTimer = 8.0; // Kracht-effect: spoken worden blauw en eetbaar!
+        if (wordStatus[item.word] !== "wrong") {
+          wordStatus[item.word] = "correct";
+        } else {
+          // Als een woord eerder fout was en nu goed, telt het als goed geoefend
+          wordStatus[item.word] = "correct";
+        }
+
+        sound.correct();
+
+        feedbackBox.classList.add("bg-emerald-950/80", "border-emerald-500/60", "text-emerald-100");
+        feedbackHeading.textContent = `Heel goed! "${item.word}" past precies (+100 punten & ⚡ kracht!)`;
+        feedbackMessage.textContent = item.explanation;
+        feedbackExample.textContent = item.example;
+      } else {
+        if (wordStatus[item.word] !== "correct") {
+          wordStatus[item.word] = "wrong";
+        }
+        if (clickedBtn) {
+          clickedBtn.classList.remove("bg-slate-800", "border-slate-600");
+          clickedBtn.classList.add("bg-rose-950/80", "border-rose-500/70", "text-rose-200");
+        }
+
+        sound.wrong();
+
+        feedbackBox.classList.add("bg-amber-950/80", "border-amber-500/60", "text-amber-100");
+        feedbackHeading.textContent = `Bijna! Het juiste woord is "${item.word}".`;
+        feedbackMessage.textContent = item.explanation;
+        feedbackExample.textContent = item.example;
+      }
+
+      updateHUD();
+      renderWordTracker();
+      continueBtn.classList.remove("hidden");
+    }
+
+    function closeQuestionAndResume() {
+      questionModal.classList.add("hidden");
+      activeQuestionToken = null;
+      questionAnswered = false;
+
+      // Controleer of alle 12 woordmunten verzameld zijn
+      const allCollected = wordTokens.every((t) => t.collected);
+      if (allCollected) {
+        finishGame(true);
+        return;
+      }
+
+      gameState = "PLAYING";
+      if (powerTimer > 0) {
+        showBanner("Je hebt nu kracht! Raak een blauw spook aan voor +150 bonuspunten.", "success");
+      } else {
+        hideBanner();
+      }
+    }
+
+    // =========================================================================
+    // 11. EINDSCHERM (WINST OF ALLE LEVENS OP)
+    // =========================================================================
+    function finishGame(won) {
+      gameState = "ENDED";
+      questionModal.classList.add("hidden");
+
+      const correctCount = Object.values(wordStatus).filter((st) => st === "correct").length;
+
+      if (won) {
+        sound.win();
+        endEmoji.textContent = "🎉";
+        endTitle.textContent = "Gefeliciteerd! Alle 12 woorden gevonden!";
+        endSubtitle.textContent =
+          "Wat knap gedaan op A2-niveau. Hieronder zie je hoe je het hebt gedaan met alle doelwoorden.";
+      } else {
+        endEmoji.textContent = "🌟";
+        endTitle.textContent = "Goed geoefend!";
+        endSubtitle.textContent =
+          "Je levens zijn op, maar elke vraag helpt je verder met Nederlands. Probeer het gerust nog een keer!";
+      }
+
+      endScore.textContent = String(score);
+      endCorrectCount.textContent = `${correctCount} / ${VOCABULARY_ITEMS.length}`;
+
+      endWordSummary.innerHTML = "";
+      VOCABULARY_ITEMS.forEach((item) => {
+        const st = wordStatus[item.word];
+        const chip = document.createElement("div");
+        if (st === "correct") {
+          chip.className = "rounded-lg px-2.5 py-1.5 bg-emerald-950/80 border border-emerald-500/40 text-emerald-200 font-semibold flex items-center justify-between";
+          chip.innerHTML = `<span>${item.word}</span><span>✓</span>`;
+        } else if (st === "wrong") {
+          chip.className = "rounded-lg px-2.5 py-1.5 bg-amber-950/70 border border-amber-500/40 text-amber-200 font-semibold flex items-center justify-between";
+          chip.innerHTML = `<span>${item.word}</span><span>~</span>`;
+        } else {
+          chip.className = "rounded-lg px-2.5 py-1.5 bg-slate-900 border border-slate-800 text-slate-400 font-medium flex items-center justify-between";
+          chip.innerHTML = `<span>${item.word}</span><span>·</span>`;
+        }
+        endWordSummary.appendChild(chip);
+      });
+
+      endModal.classList.remove("hidden");
+    }
+
+    // =========================================================================
+    // 12. EVENT LISTENERS & ANIMATIELUS
+    // =========================================================================
+    window.addEventListener("keydown", (e) => {
+      const key = e.key.toLowerCase();
+
+      // Sneltoetsen binnen de vraag-modal (1, 2, 3 om te kiezen, Enter/Spatie om door te gaan)
+      if (gameState === "QUESTION") {
+        if (!questionAnswered && ["1", "2", "3", "4"].includes(key)) {
+          const idx = parseInt(key, 10) - 1;
+          const btns = optionsContainer.querySelectorAll("button");
+          if (btns[idx]) {
+            e.preventDefault();
+            btns[idx].click();
+          }
+        } else if (questionAnswered && (key === "enter" || key === " ")) {
+          e.preventDefault();
+          closeQuestionAndResume();
+        }
+        return;
+      }
+
+      // Sluit woordenlijst met Escape
+      if (!vocabModal.classList.contains("hidden")) {
+        if (key === "escape") {
+          e.preventDefault();
+          closeVocabModal();
+        }
+        return;
+      }
+
+      if (["arrowup", "arrowdown", "arrowleft", "arrowright", "w", "a", "s", "d", " "].includes(key)) {
+        if (gameState === "PLAYING" || key === " ") {
+          e.preventDefault();
+        }
+      }
+
+      if (key === "arrowup" || key === "w") setDesiredDirection("UP");
+      else if (key === "arrowdown" || key === "s") setDesiredDirection("DOWN");
+      else if (key === "arrowleft" || key === "a") setDesiredDirection("LEFT");
+      else if (key === "arrowright" || key === "d") setDesiredDirection("RIGHT");
+      else if (key === " " && (gameState === "PLAYING" || gameState === "PAUSED")) {
+        togglePause();
+      }
+    });
+
+    // Fullscreen API ondersteuning voor digibord / volledig scherm
+    function updateFullscreenButton() {
+      const isFs = Boolean(document.fullscreenElement || document.webkitFullscreenElement);
+      if (isFs) {
+        fullscreenIcon.textContent = "🗗";
+        fullscreenLabel.textContent = "Normaal scherm";
+      } else {
+        fullscreenIcon.textContent = "⛶";
+        fullscreenLabel.textContent = "Volledig scherm";
+      }
+      setTimeout(resizeCanvas, 60);
+    }
+
+    fullscreenBtn.addEventListener("click", async () => {
+      try {
+        const docEl = document.documentElement;
+        if (!document.fullscreenElement && !document.webkitFullscreenElement) {
+          if (docEl.requestFullscreen) {
+            await docEl.requestFullscreen();
+          } else if (docEl.webkitRequestFullscreen) {
+            docEl.webkitRequestFullscreen();
+          }
+        } else {
+          if (document.exitFullscreen) {
+            await document.exitFullscreen();
+          } else if (document.webkitExitFullscreen) {
+            document.webkitExitFullscreen();
+          }
+        }
+      } catch (err) {
+        showBanner("Volledig scherm wordt door deze browserweergave geblokkeerd. Gebruik F11 voor volledig scherm.", "warning");
+      }
+    });
+
+    document.addEventListener("fullscreenchange", updateFullscreenButton);
+    document.addEventListener("webkitfullscreenchange", updateFullscreenButton);
+
+    // Woordenlijst modal openen en sluiten
+    function openVocabModal() {
+      if (gameState === "PLAYING") {
+        stateBeforeVocabModal = "PLAYING";
+        gameState = "PAUSED";
+      } else {
+        stateBeforeVocabModal = gameState;
+      }
+
+      vocabModalGrid.innerHTML = "";
+      VOCABULARY_ITEMS.forEach((item) => {
+        const st = wordStatus[item.word] || "unseen";
+        let statusTag = `<span class="text-[11px] font-bold px-2 py-0.5 rounded-full bg-slate-700 text-slate-300">Nog zoeken</span>`;
+        if (st === "correct") {
+          statusTag = `<span class="text-[11px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/25 text-emerald-300 border border-emerald-400/40">✓ Goed</span>`;
+        } else if (st === "wrong") {
+          statusTag = `<span class="text-[11px] font-bold px-2 py-0.5 rounded-full bg-amber-500/25 text-amber-300 border border-amber-400/40">Geoefend</span>`;
+        }
+
+        const card = document.createElement("div");
+        card.className = "bg-slate-800/90 border border-slate-700 rounded-xl p-3.5 flex flex-col gap-1.5";
+        card.innerHTML = `
+          <div class="flex items-center justify-between gap-2">
+            <div>
+              <span class="text-base sm:text-lg font-extrabold text-amber-300">${item.word}</span>
+              <span class="text-xs text-slate-400 ml-1.5">(${item.pos})</span>
+            </div>
+            ${statusTag}
+          </div>
+          <p class="text-xs sm:text-sm text-slate-100 leading-snug">${item.explanation}</p>
+          <p class="text-xs text-sky-300 italic">${item.example}</p>
+        `;
+        vocabModalGrid.appendChild(card);
+      });
+
+      vocabModal.classList.remove("hidden");
+    }
+
+    function closeVocabModal() {
+      vocabModal.classList.add("hidden");
+      if (stateBeforeVocabModal === "PLAYING") {
+        gameState = "PLAYING";
+      }
+      stateBeforeVocabModal = null;
+    }
+
+    vocabListBtn.addEventListener("click", openVocabModal);
+    closeVocabBtn.addEventListener("click", closeVocabModal);
+
+    // Touch- en klikknoppen voor richtingen
+    document.querySelectorAll(".dpad-btn").forEach((btn) => {
+      const dir = btn.getAttribute("data-dir");
+      const triggerDir = (ev) => {
+        ev.preventDefault();
+        sound.ensureContext();
+        setDesiredDirection(dir);
+      };
+      btn.addEventListener("pointerdown", triggerDir);
+      btn.addEventListener("click", triggerDir);
+    });
+
+    // Swipe-ondersteuning op het canvas voor mobiele apparaten
+    let touchStartX = null;
+    let touchStartY = null;
+    canvas.addEventListener(
+      "touchstart",
+      (e) => {
+        if (e.touches.length > 0) {
+          touchStartX = e.touches[0].clientX;
+          touchStartY = e.touches[0].clientY;
+        }
+      },
+      { passive: true }
+    );
+
+    canvas.addEventListener(
+      "touchmove",
+      (e) => {
+        if (touchStartX === null || touchStartY === null || e.touches.length === 0) return;
+        const dx = e.touches[0].clientX - touchStartX;
+        const dy = e.touches[0].clientY - touchStartY;
+        if (Math.abs(dx) > 24 || Math.abs(dy) > 24) {
+          if (Math.abs(dx) > Math.abs(dy)) {
+            setDesiredDirection(dx > 0 ? "RIGHT" : "LEFT");
+          } else {
+            setDesiredDirection(dy > 0 ? "DOWN" : "UP");
+          }
+          touchStartX = e.touches[0].clientX;
+          touchStartY = e.touches[0].clientY;
+        }
+      },
+      { passive: true }
+    );
+
+    startPlayBtn.addEventListener("click", () => {
+      sound.ensureContext();
+      if (gameState === "PAUSED") {
+        gameState = "PLAYING";
+        pauseBtn.textContent = "Pauze";
+        boardOverlay.classList.add("hidden");
+      } else {
+        initGame(true);
+      }
+    });
+
+    function togglePause() {
+      if (gameState === "PLAYING") {
+        gameState = "PAUSED";
+        pauseBtn.textContent = "Hervat";
+        overlayBadge.textContent = "Gepauzeerd";
+        overlayTitle.textContent = "Spel staat even stil";
+        overlayText.textContent = "Klik op 'Verder spelen' wanneer je klaar bent om verder te gaan.";
+        startPlayBtn.textContent = "Verder spelen";
+        boardOverlay.classList.remove("hidden");
+      } else if (gameState === "PAUSED") {
+        gameState = "PLAYING";
+        pauseBtn.textContent = "Pauze";
+        boardOverlay.classList.add("hidden");
+      }
+    }
+
+    pauseBtn.addEventListener("click", () => {
+      if (gameState === "PLAYING" || gameState === "PAUSED") {
+        togglePause();
+      }
+    });
+
+    restartBtn.addEventListener("click", () => {
+      sound.ensureContext();
+      initGame(true);
+    });
+
+    playAgainBtn.addEventListener("click", () => {
+      sound.ensureContext();
+      initGame(true);
+    });
+
+    continueBtn.addEventListener("click", () => {
+      closeQuestionAndResume();
+    });
+
+    soundToggleBtn.addEventListener("click", () => {
+      sound.enabled = !sound.enabled;
+      if (sound.enabled) {
+        soundIcon.textContent = "🔊";
+        soundLabel.textContent = "Geluid aan";
+        sound.ensureContext();
+        sound.dot();
+      } else {
+        soundIcon.textContent = "🔇";
+        soundLabel.textContent = "Geluid uit";
+      }
+    });
+
+    window.addEventListener("resize", resizeCanvas);
+
+    function gameLoop(timestamp) {
+      if (!lastFrameTime) lastFrameTime = timestamp;
+      const dt = Math.min(0.05, (timestamp - lastFrameTime) / 1000);
+      lastFrameTime = timestamp;
+      animTime += dt;
+
+      if (gameState === "PLAYING") {
+        if (powerTimer > 0) {
+          powerTimer = Math.max(0, powerTimer - dt);
+          updateHUD();
+        }
+        if (invulnTimer > 0) {
+          invulnTimer = Math.max(0, invulnTimer - dt);
+        }
+
+        updatePacman(dt);
+        if (gameState === "PLAYING") {
+          updateGhosts(dt);
+        }
+      }
+
+      drawGame();
+      requestAnimationFrame(gameLoop);
+    }
+
+    window.onload = function () {
+      initGame(false);
+      requestAnimationFrame(gameLoop);
+    };
+  </script>
+</body>
+</html>
